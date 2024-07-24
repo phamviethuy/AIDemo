@@ -1,4 +1,5 @@
-﻿using Emgu.CV;
+﻿using AIDemo.Services;
+using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Dnn;
 using Emgu.CV.Structure;
@@ -10,9 +11,6 @@ using System.Windows;
 
 namespace AIDemo
 {
-
-
-
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -20,20 +18,22 @@ namespace AIDemo
     {
         private const string Model_Path = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/onnx/model.onnx";
         private const string OPEN_VINO_Model_BIN_Path = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/openvino/model.bin";
-        private const string OPEN_VINO_Model_Path = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/openvino/model.xml";
+        private const string OPEN_VINO_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/openvino/model.xml";
+        private const string TORCH_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/torch/model.pt";
         private int currentIndex = 0;
         private List<string> imagePaths = [];
+
+        private readonly Inferencer inferencer;
+
         public MainWindow()
         {
             InitializeComponent();
-
+            inferencer = new OpenVinoInferencer(OPEN_VINO_MODEL_PATH);
             OpenVinoSharp.Version version = Ov.get_openvino_version();
 
             Slog.INFO("---- OpenVINO INFO----");
             Slog.INFO("Description : " + version.description);
             Slog.INFO("Build number: " + version.buildNumber);
-            string image_path = @"D:/Workspace/Study/anomalib/datasets/MVTec/bottle/test/broken_small/000.png";
-            Predict(image_path);
         }
 
         private void btnBack_Click(object sender, RoutedEventArgs e)
@@ -130,20 +130,9 @@ namespace AIDemo
 
             //// Perform inference
             //Mat output = net.Forward();
-
-            using Core core = new Core();
-            using OpenVinoSharp.Model model = core.read_model(OPEN_VINO_Model_Path, OPEN_VINO_Model_BIN_Path);
-            using CompiledModel compiled_model = core.compile_model(model, "AUTO");
-
-            var input = compiled_model.input(0);
-            var output = compiled_model.output(0);
-            using InferRequest infer_request = compiled_model.create_infer_request();
-            using Tensor input_tensor = infer_request.get_tensor("input");
-
-            infer_request.infer();
-            using Tensor output_tensor = infer_request.get_tensor("output0");
+            
         }
-   
+
         public Mat PreProcess(Mat image)
         {
             Mat processedImage = image.Clone();
@@ -158,7 +147,7 @@ namespace AIDemo
             if (processedImage.NumberOfChannels == 3)
             {
                 // Convert to 4D tensor (Batch, Channel, Height, Width)
-                // Since Emgu.CV's Mat class doesn't directly support this, 
+                // Since Emgu.CV's Mat class doesn't directly support this,
                 // you might need additional logic depending on your specific needs.
 
                 // For now, we will just return the image with correct channels
