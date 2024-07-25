@@ -1,39 +1,36 @@
-﻿using AIDemo.Services;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Dnn;
-using Emgu.CV.Structure;
+﻿using AIDemo.Models;
+using AIDemo.Services;
 using Microsoft.Win32;
-using OpenVinoSharp;
-using OpenVinoSharp.Extensions.utility;
+using Newtonsoft.Json;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using OpenCvSharp.WpfExtensions;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 
 namespace AIDemo
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : System.Windows.Window
     {
-        private const string Model_Path = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/onnx/model.onnx";
-        private const string OPEN_VINO_Model_BIN_Path = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/openvino/model.bin";
-        private const string OPEN_VINO_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/openvino/model.xml";
-        private const string TORCH_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Padim/MVTec/bottle/latest/weights/torch/model.pt";
-        private int currentIndex = 0;
-        private List<string> imagePaths = [];
+        private const string IMAGE_PATH = "D:/Workspace/Study/anomalib/datasets/MVTec/bottle/test/broken_large/000.png";
+        private const string ONNX_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Patchcore/MVTec/bottle/latest/weights/onnx";
+        private const string OPEN_VINO_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Patchcore/MVTec/bottle/latest/weights/openvino";
+        private const string TORCH_MODEL_PATH = "D:/Workspace/Study/anomalib-demo/results/Patchcore/MVTec/bottle/latest/weights/torch";
 
+        private readonly List<string> imagePaths = [];
         private readonly Inferencer inferencer;
+        private int currentIndex = 0;
 
         public MainWindow()
         {
             InitializeComponent();
-            inferencer = new OpenVinoInferencer(OPEN_VINO_MODEL_PATH);
-            OpenVinoSharp.Version version = Ov.get_openvino_version();
 
-            Slog.INFO("---- OpenVINO INFO----");
-            Slog.INFO("Description : " + version.description);
-            Slog.INFO("Build number: " + version.buildNumber);
+            var metaData = JsonConvert.DeserializeObject<MetaData>(File.ReadAllText(Path.Combine(ONNX_MODEL_PATH, "metadata.json")));
+            inferencer = new OnnxInferencer(ONNX_MODEL_PATH, metaData);
         }
 
         private void btnBack_Click(object sender, RoutedEventArgs e)
@@ -74,9 +71,7 @@ namespace AIDemo
                 try
                 {
                     // Get image files with common extensions (JPG, JPEG, PNG, GIF)
-                    imagePaths.AddRange(
-                        Directory.EnumerateFiles(folderPath, "*.{jpg,jpeg,png,gif}", SearchOption.AllDirectories)
-                    );
+                    imagePaths.AddRange(Directory.EnumerateFiles(folderPath));
                 }
                 catch (UnauthorizedAccessException ex)
                 {
@@ -101,7 +96,7 @@ namespace AIDemo
         {
             if (currentIndex > 0)
             {
-                return imagePaths[currentIndex--];
+                return imagePaths[--currentIndex];
             }
             currentIndex = imagePaths.Count - 1; ;
             return imagePaths[currentIndex];
@@ -109,9 +104,9 @@ namespace AIDemo
 
         private string GetNextImage()
         {
-            if (currentIndex < imagePaths.Count)
+            if (currentIndex < imagePaths.Count - 1)
             {
-                return imagePaths[currentIndex++];
+                return imagePaths[++currentIndex];
             }
             currentIndex = 0;
             return GetNextImage();
@@ -119,49 +114,28 @@ namespace AIDemo
 
         private void Predict(string imagePath)
         {
-            using Mat image = CvInvoke.Imread(imagePath, ImreadModes.Color);
-            System.Drawing.Size inputSize = new System.Drawing.Size(224, 224); // Adjust according to your model's input size
-            using Mat resizedImage = new Mat();
-            CvInvoke.Resize(image, resizedImage, inputSize);
-            Mat blob = DnnInvoke.BlobFromImage(resizedImage, 1.0, inputSize, new MCvScalar(0, 0, 0), swapRB: true, crop: false);
-
-            //// Set the input blob to the network
-            //net.SetInput(blob);
-
-            //// Perform inference
-            //Mat output = net.Forward();
-            
+            var res = inferencer.Predict(imagePath);
+            if (res.IsNormal)
+            {
+                btnResult.Content = $"{res.Label} {res.Score}";
+                btnResult.Background = new SolidColorBrush(Colors.Green);
+            }
+            else
+            {
+                btnResult.Content = $"{res.Label} {res.Score}";
+                btnResult.Background = new SolidColorBrush(Colors.Red);
+            }
+            SetImage(res.Image, res.Mask);
         }
 
-        public Mat PreProcess(Mat image)
-        {
-            Mat processedImage = image.Clone();
 
-            if (processedImage.NumberOfChannels == 3)
-            {
-                // Convert from BGR to RGB
-                CvInvoke.CvtColor(processedImage, processedImage, Emgu.CV.CvEnum.ColorConversion.Bgr2Rgb);
-            }
 
-            // If image is 3 channels (RGB), transpose dimensions
-            if (processedImage.NumberOfChannels == 3)
-            {
-                // Convert to 4D tensor (Batch, Channel, Height, Width)
-                // Since Emgu.CV's Mat class doesn't directly support this,
-                // you might need additional logic depending on your specific needs.
-
-                // For now, we will just return the image with correct channels
-                // assuming the Mat is in RGB format.
-            }
-
-            return processedImage;
-        }
-
-        private void SetImage(Mat image)
+        private void SetImage(Mat image, Mat heatMap)
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                PreviewImage.Source = image.ToBitmapSource();
+                PreviewImage.Source = image.ToBitmap().ToBitmapSource();
+                SegmentImage.Source = heatMap.ToBitmap().ToBitmapSource();
             });
         }
     }

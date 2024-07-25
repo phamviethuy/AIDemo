@@ -9,8 +9,9 @@ namespace AIDemo.Services
 {
     internal class TorchInferencer: Inferencer
     {
-        public TorchInferencer(string modelPath) {
-
+        public TorchInferencer(string modelPath) 
+        {
+            
         }
     }
 }

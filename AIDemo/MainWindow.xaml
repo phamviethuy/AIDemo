@@ -8,6 +8,7 @@
     Title="MainWindow"
     Width="800"
     Height="450"
+    WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
     <DockPanel LastChildFill="True">
 
@@ -24,14 +25,23 @@
                 DockPanel.Dock="Right" />
             <StackPanel>
                 <DockPanel DockPanel.Dock="Bottom" LastChildFill="True">
-                    <Button x:Name="btnBrower" Margin="5,0" DockPanel.Dock="Left" Click="btnBrower_Click">Brower</Button>
+                    <Button
+                        x:Name="btnBrower"
+                        Margin="5,0"
+                        Click="btnBrower_Click"
+                        DockPanel.Dock="Left">
+                        Brower
+                    </Button>
                     <TextBox x:Name="tbFolder" />
                 </DockPanel>
                 <StackPanel Margin="5" Orientation="Horizontal">
                     <Button x:Name="btnBack" Click="btnBack_Click">
                         Back
                     </Button>
-                    <Button x:Name="btnNext" Margin="5,0" Click="btnNext_Click">
+                    <Button
+                        x:Name="btnNext"
+                        Margin="5,0"
+                        Click="btnNext_Click">
                         Next
                     </Button>
                 </StackPanel>
@@ -39,8 +49,10 @@
 
         </DockPanel>
 
-
-        <Image x:Name="PreviewImage" />
+        <UniformGrid Columns="2" Rows="1">
+            <Image x:Name="PreviewImage" />
+            <Image x:Name="SegmentImage" />
+        </UniformGrid>
 
     </DockPanel>
 </Window>
