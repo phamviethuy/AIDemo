@@ -3,7 +3,6 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Models;
 using OpenCvSharp;
-using OpenVinoSharp.Extensions.process;
 
 namespace AIDemo.Services
 {
@@ -79,17 +78,22 @@ namespace AIDemo.Services
             {
                 floatMap.ConvertTo(colorMap, MatType.CV_8UC1, alpha, beta);
             }
+
+            Cv2.Resize(floatMap, floatMap, dsize: new Size(inputWidth, inputHeight));
+
             Mat predMask = new Mat();
             Cv2.Threshold(floatMap, predMask, metaData.pixel_threshold, 255, ThresholdTypes.Binary);
             predMask.ConvertTo(predMask, MatType.CV_8UC1);
 
-            Cv2.ApplyColorMap(colorMap, colorMap, ColormapTypes.Jet);
             Cv2.Resize(colorMap, colorMap, dsize: new Size(inputWidth, inputHeight));
+            Cv2.ApplyColorMap(colorMap, colorMap, ColormapTypes.Jet);
             Cv2.AddWeighted(imgSrc, 0.5, colorMap, 0.5, 0, colorMixMap);
 
-            var res = new PredictResult(colorMixMap, null)
+           
+
+            var res = new PredictResult(imgSrc, null)
             {
-                HeatMap = floatMap,
+                HeatMap = colorMixMap,
                 Score = Math.Round(score, 2),
                 IsNormal = maxFloat < metaData.image_threshold,
                 Mask = predMask
