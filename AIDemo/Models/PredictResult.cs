@@ -2,7 +2,7 @@
 
 namespace Models
 {
-    internal class PredictResult
+    internal class PredictResult : IDisposable
     {
         public PredictResult(Mat img, Mat anomaly)
         {
@@ -11,13 +11,22 @@ namespace Models
         }
 
         public Mat Anomaly { get; }
-        public Mat HeatMap { get; set; }
+        public Mat? HeatMap { get; set; }
         public Mat Image { get; }
         public bool IsNormal { get; set; }
         public string Label { get => IsNormal ? "Normal" : "Abnormal"; }
-        public Mat Mask { get; set; }
+        public Mat? Mask { get; set; }
         public double Score { get; set; }
         public Mat Segmentation { get => MarkBoundaries(Image, Mask); }
+
+        public void Dispose()
+        {
+            Anomaly?.Dispose();
+            Image?.Dispose();
+            Mask?.Dispose();
+            Segmentation?.Dispose();
+            HeatMap?.Dispose();
+        }
 
         private Mat MarkBoundaries(Mat image, Mat predMask)
         {
